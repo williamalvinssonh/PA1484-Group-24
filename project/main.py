@@ -48,7 +48,7 @@ class Application:
         self.apply_tile_colors(self.tile1, self.tile1_label, False)
 
         self.tile2_label = lv.label(self.tile2)
-        self.tile2_label.set_text("Welcome to the workshop")
+        self.tile2_label.set_text("Welcome to the Xs")
         self.tile2_label.set_style_text_font(lv.font_montserrat_28, 0)
         self.tile2_label.center()
         self.apply_tile_colors(self.tile2, self.tile2_label, False)
