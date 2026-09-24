@@ -40,15 +40,16 @@ class Application:
 
         self.tile1 = self.tileview.add_tile(0, 0, lv.DIR.RIGHT)
         self.tile2 = self.tileview.add_tile(1, 0, lv.DIR.LEFT)
+        self.tile3 = self.tileview.add_tile(1, 0, lv.DIR.LEFT)
 
         self.tile1_label = lv.label(self.tile1)
-        self.tile1_label.set_text("Hello Students")
+        self.tile1_label.set_text("Public Transportation Information and Interaction on ESP32")
         self.tile1_label.set_style_text_font(lv.font_montserrat_28, 0)
         self.tile1_label.center()
         self.apply_tile_colors(self.tile1, self.tile1_label, False)
 
         self.tile2_label = lv.label(self.tile2)
-        self.tile2_label.set_text("Welcome to the workshop")
+        self.tile2_label.set_text("Version: 1.1")
         self.tile2_label.set_style_text_font(lv.font_montserrat_28, 0)
         self.tile2_label.center()
         self.apply_tile_colors(self.tile2, self.tile2_label, False)
@@ -56,6 +57,15 @@ class Application:
         self.tile2.add_event_cb(
             self.on_tile2_clicked, lv.EVENT.CLICKED, None
         )
+
+
+        self.tile3_label = lv.label(self.tile3)
+        self.tile3_label.set_text("Group 24: Hieu Phan, Ivar Stark, Varun Mahesh, William Alvinnson Hilberth, Zeinab Al Fadhli")
+        self.tile3_label.set_style_text_font(lv.font_montserrat_28, 0)
+        self.tile3_label.center()
+        self.apply_tile_colors(self.tile3, self.tile3_label, False)
+
+        
 
     @staticmethod
     def connect_wifi():
