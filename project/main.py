@@ -43,7 +43,7 @@ class Application:
         self.tile3 = self.tileview.add_tile(1, 0, lv.DIR.LEFT)
 
         self.tile1_label = lv.label(self.tile1)
-        self.tile1_label.set_text("Public Transportation Information and Interaction on ESP32")
+        self.tile1_label.set_text("Public Transportation \n Information \n Version 1.0 | Grupp 24 \n Members: \n Hieu Phan, Ivar Stark \n Varun Mahesh, Zeinab Al Fadhili")
         self.tile1_label.set_style_text_font(lv.font_montserrat_28, 0)
         self.tile1_label.center()
         self.apply_tile_colors(self.tile1, self.tile1_label, False)
