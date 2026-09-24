@@ -43,10 +43,9 @@ class Application:
 
         self.tile1_label = lv.label(self.tile1)
         self.tile1_label.set_text(
-            "Public Transportation"
-            "\n\n Information"
+            "Public Transporation\n Information"
             "\n\n Version 1.0 | Grupp 24"
-            "\n Members:"
+            "\n\n Members:"
             "\n Hieu Phan, Ivar Stark"
             "\n Varun Mahesh, William Alvinsson H" 
             "\n Zeinab Al Fadhili"
