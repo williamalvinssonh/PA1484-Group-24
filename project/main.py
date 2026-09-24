@@ -58,15 +58,6 @@ class Application:
             self.on_tile2_clicked, lv.EVENT.CLICKED, None
         )
 
-
-        self.tile3_label = lv.label(self.tile3)
-        self.tile3_label.set_text("Group 24: Hieu Phan, Ivar Stark, Varun Mahesh, William Alvinnson Hilberth, Zeinab Al Fadhli")
-        self.tile3_label.set_style_text_font(lv.font_montserrat_28, 0)
-        self.tile3_label.center()
-        self.apply_tile_colors(self.tile3, self.tile3_label, False)
-
-        
-
     @staticmethod
     def connect_wifi():
         'Function: Connects to WiFi'
