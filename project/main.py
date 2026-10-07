@@ -34,6 +34,7 @@ class Application:
 
     def create_ui(self):
         'Function: Creates UI'
+        #Demo data
         departures = [
             {
                 "time": "14:30",
@@ -75,10 +76,11 @@ class Application:
         self.tile2 = self.tileview.add_tile(1, 0, lv.DIR.LEFT | lv.DIR.RIGHT)
         self.tile3 = self.tileview.add_tile(2, 0, lv.DIR.LEFT)
 
+        #------Start-screen------#
         self.tile1_label = lv.label(self.tile1)
         self.tile1_label.set_text(
             "Public Transporation\n Information"
-            "\n\n Version 1.0 | Grupp 24"
+            "\n\n Version 1.2 | Grupp 24"
             "\n\n Members:"
             "\n Hieu Phan, William Alvinsson H"
             "\n Zeinab Al Fadhili, Ivar Stark" 
@@ -90,7 +92,7 @@ class Application:
         self.tile1_label.center()
         self.apply_tile_colors(self.tile1, self.tile1_label, False)
 
-        #Depature-screen
+        #------Depature-screen------#
         self.departure_table = lv.table(self.tile2)
 
         # White cells
@@ -132,7 +134,7 @@ class Application:
         self.tile2.set_style_bg_opa(lv.OPA.COVER, 0)
         self.tile2.set_style_bg_color(lv.color_hex(0xFFFFFF), 0)
         
-        #Setting-screen 
+        #------Setting-screen------#
 
         self.tile3_label = lv.label(self.tile3)
         self.tile3_label.set_text(
