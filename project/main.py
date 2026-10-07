@@ -96,7 +96,7 @@ class Application:
         self.tile1_label.set_text(
 <<<<<<< Updated upstream
             "Public Transporation\n Information"
-            "\n\n Version 1.0 | Grupp 24"
+            "\n\n Version 1.2 | Grupp 24"
             "\n\n Members:"
             "\n Hieu Phan, William Alvinsson H"
             "\n Zeinab Al Fadhili, Ivar Stark" 
@@ -122,7 +122,7 @@ class Application:
         self.tile1.set_style_bg_opa(lv.OPA.COVER, 0)
         self.tile1.set_style_bg_color(lv.color_hex(0xFFFFFF), 0)
 
-        #Depature-screen
+        #------Depature-screen------#
         self.departure_table = lv.table(self.tile2)
 
         # White cells
@@ -164,7 +164,7 @@ class Application:
         self.tile2.set_style_bg_opa(lv.OPA.COVER, 0)
         self.tile2.set_style_bg_color(lv.color_hex(0xFFFFFF), 0)
         
-        #Setting-screen 
+        #------Setting-screen------#
 
         self.tile3_label = lv.label(self.tile3)
         self.tile3_label.set_text(
