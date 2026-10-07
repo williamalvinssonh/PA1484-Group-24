@@ -34,6 +34,7 @@ class Application:
 
     def create_ui(self):
         'Function: Creates UI'
+        #Demo data
         departures = [
             {
                 "time": "14:30",
@@ -75,6 +76,7 @@ class Application:
         self.tile2 = self.tileview.add_tile(1, 0, lv.DIR.LEFT | lv.DIR.RIGHT)
         self.tile3 = self.tileview.add_tile(2, 0, lv.DIR.LEFT)
 
+<<<<<<< HEAD
         # Title
         self.tile1_title = lv.label(self.tile1)
         self.tile1_title.set_text(
@@ -87,6 +89,9 @@ class Application:
         self.tile1_title.align(lv.ALIGN.TOP_MID, 0, 50)
 
         # Information
+=======
+        #------Start-screen------#
+>>>>>>> 4b528cc6f22256fe85b8b961eaa6ba1fa43bbad3
         self.tile1_label = lv.label(self.tile1)
         self.tile1_label.set_text(
 <<<<<<< Updated upstream
