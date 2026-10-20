@@ -98,9 +98,25 @@ class Application:
         self.tile2 = self.tileview.add_tile(2, 0, lv.DIR.LEFT )
         self.tile3 = self.tileview.add_tile(1, 0, lv.DIR.LEFT | lv.DIR.RIGHT)
 
+<<<<<<< HEAD
+        # Title
+        self.tile1_title = lv.label(self.tile1)
+        self.tile1_title.set_text(
+            "Public Transportation\nInformation"
+        )
+        self.tile1_title.set_width(600)
+        self.tile1_title.set_style_text_align(lv.TEXT_ALIGN.CENTER, 0)
+        self.tile1_title.set_style_text_font(lv.font_montserrat_28, 0)
+        self.tile1_title.set_style_text_color(lv.color_hex(0x000000), 0)
+        self.tile1_title.align(lv.ALIGN.TOP_MID, 0, 50)
+
+        # Information
+=======
         #------Start-screen------#
+>>>>>>> 4b528cc6f22256fe85b8b961eaa6ba1fa43bbad3
         self.tile1_label = lv.label(self.tile1)
         self.tile1_label.set_text(
+<<<<<<< Updated upstream
             "Public Transporation\n Information"
             "\n\n Version 1.2 | Grupp 24"
             "\n\n Members:"
@@ -109,10 +125,24 @@ class Application:
             "\n Varun Mahesh"
             "\n\n Swipe -->"               
             )
+=======
+            "Version 1.0 | Grupp 24"
+            "\nMembers:"
+            "\nHieu Phan, Ivar Stark"
+            "\nVarun Mahesh, William Alvinsson H"
+            "\nZeinab Al Fadhili"
+            "\n\nSwipe -->"
+        )
+        self.tile1_label.set_width(600)
+>>>>>>> Stashed changes
         self.tile1_label.set_style_text_align(lv.TEXT_ALIGN.CENTER, 0)
         self.tile1_label.set_style_text_font(lv.font_montserrat_28, 0)
-        self.tile1_label.center()
-        self.apply_tile_colors(self.tile1, self.tile1_label, False)
+        self.tile1_label.set_style_text_color(lv.color_hex(0x000000), 0)
+        self.tile1_label.align(lv.ALIGN.TOP_MID, 0, 180)
+
+        # Background
+        self.tile1.set_style_bg_opa(lv.OPA.COVER, 0)
+        self.tile1.set_style_bg_color(lv.color_hex(0xFFFFFF), 0)
 
         #------Depature-screen------#
         self.departure_table = lv.table(self.tile2)
