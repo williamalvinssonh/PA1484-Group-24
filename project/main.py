@@ -24,7 +24,7 @@ GREY = 0x555555
 
 # US3.2B: Stop name in dropdown -> Trafiklab area ID.
 # Find the actual IDs using:
-# https://realtime-api.trafiklab.se/v1/stops/name/<name>?key=<api_key>
+# https://realtime-api.trafiklab.se/v1/stops/name/<name>?key=b35cb13d3f3b441ba134f27c542edf1e
 STOP_IDS = {
     "Karlskrona C": "740000230",
     "Bergasa": "740001537",
@@ -199,7 +199,7 @@ class Application:
         self.status_label.align(lv.ALIGN.BOTTOM_MID, 0, -28)
 
     def create_settings_screen(self):
-        'Function: Settings screen (US3.1, US3.2B, US3.3, US3.4, US3.5)'
+        #Function: Settings screen (US3.1, US3.2B, US3.3, US3.4, US3.5)
         # White background
         self.tile3.set_style_bg_opa(lv.OPA.COVER, 0)
         self.tile3.set_style_bg_color(lv.color_hex(WHITE), 0)
