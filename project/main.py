@@ -198,6 +198,16 @@ class Application:
         self.status_label.set_text("")
         self.status_label.align(lv.ALIGN.BOTTOM_MID, 0, -28)
 
+        # US4.2: Manual refresh button
+        self.refresh_button = lv.button(self.tile2)
+        self.refresh_button.set_size(110, 32)
+        self.refresh_button.align(lv.ALIGN.TOP_RIGHT, -10, 4)
+        self.refresh_label = lv.label(self.refresh_button)
+        self.refresh_label.set_text("Refresh")
+        self.refresh_label.center()
+        self.refresh_button.add_event_cb(
+            self.on_refresh_clicked, lv.EVENT.CLICKED, None)
+
     def create_settings_screen(self):
         #Function: Settings screen (US3.1, US3.2B, US3.3, US3.4, US3.5)
         # White background
@@ -283,7 +293,7 @@ class Application:
 
         self.header.set_text(ascii_text(self.selected_stop))
         self.header.align(lv.ALIGN.TOP_MID, 0, 10)
-        self.set_status("")
+        self.set_status("Wi-Fi connected")
         self.show_departures()
         log("departures updated: %d rows" % len(self.all_departures))
 
@@ -310,14 +320,25 @@ class Application:
                 row, 2, ascii_text(departure["destination"]))
             self.departure_table.set_cell_value(row, 3, departure["status"])
 
-    def on_refresh_timer(self, _timer):
-        #Function: Runs every 60 seconds (US4.1)
+    def update_data(self):
+        #Function: Checks Wi-Fi and fetches new departures
         if network.WLAN(network.STA_IF).isconnected():
             self.refresh_departures()
         elif self.connect_wifi():
             self.refresh_departures()
         else:
             self.set_status("No Wi-Fi")
+
+    def on_refresh_timer(self, _timer):
+        #Function: Runs every 60 seconds (US4.1)
+        self.update_data()
+
+    def on_refresh_clicked(self, _event):
+        #Function: Manual refresh (US4.2)
+        log("manual refresh")
+        self.update_data()
+        # Restart the 60 s countdown so no extra fetch happens right after
+        self.refresh_timer.reset()   
 
     # ========================== Settings ==============================
 
