@@ -31,7 +31,6 @@ STOP_IDS = {
     "Lyckeby": "740000663",
     "Campus Grasvik": "740032188",
     "Salto": "740031870",
-    "Aspo": "740068805",
 }
 
 # US3.3: Name in dropdown -> transport_mode in the API (None = all)
@@ -44,6 +43,8 @@ TRANSPORT_MODES = {
 
 DEFAULT_STOP = "Karlskrona C"
 DEFAULT_TRANSPORT = "All"
+DEFAULT_JOURNEY_START = "Karlskrona C"
+DEFAULT_JOURNEY_DESTINATION = "Lyckeby"
 
 _ASCII = {"å": "a", "ä": "a", "ö": "o", "Å": "A", "Ä": "A", "Ö": "O"
           ,"ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE", "é": "e", "è": "e", "ü": "u"
@@ -68,6 +69,8 @@ class Application:
         # Default settings
         self.selected_stop = DEFAULT_STOP
         self.selected_transport = DEFAULT_TRANSPORT
+        self.journey_start = DEFAULT_JOURNEY_START
+        self.journey_destination = DEFAULT_JOURNEY_DESTINATION
 
         # Latest download from Trafiklab (unfiltered)
         self.all_departures = []
@@ -110,11 +113,13 @@ class Application:
         # Order: Start (0) <-> Settings (1) <-> Departures (2)
         self.tile1 = self.tileview.add_tile(0, 0, lv.DIR.RIGHT)
         self.tile3 = self.tileview.add_tile(1, 0, lv.DIR.LEFT | lv.DIR.RIGHT)
-        self.tile2 = self.tileview.add_tile(2, 0, lv.DIR.LEFT)
+        self.tile2 = self.tileview.add_tile(2, 0, lv.DIR.LEFT | lv.DIR.RIGHT)
+        self.tile4 = self.tileview.add_tile(3, 0, lv.DIR.LEFT)
 
         self.create_start_screen()
         self.create_departure_screen()
         self.create_settings_screen()
+        self.create_journey_screen()
 
         # NF3: Attribution. Created last and directly on the screen
         # so that it is visible on all tiles.
@@ -273,6 +278,53 @@ class Application:
         self.reset_button.add_event_cb(
             self.reset_settings, lv.EVENT.CLICKED, None)
 
+    def create_journey_screen(self):
+        #Function: Creates journey selection screen
+        
+        #White backround
+        self.tile4.set_style_bg_opa(lv.OPA.COVER, 0)
+        self.tile4.set_style_bg_color(lv.color_hex(WHITE), 0)
+
+        #Title
+        self.tile4_title = lv.label(self.tile4)
+        self.tile4_title.set_text("Journey Planner")
+        self.tile4_title.set_style_text_font(lv.font_montserrat_28, 0)
+        self.tile4_title.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.tile4_title.align(lv.ALIGN.TOP_MID, 0, 20)
+
+        #Starting stop
+        self.start_label = lv.label(self.tile4)
+        self.start_label.set_text("Starting stop:")
+        self.start_label.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.start_label.align(lv.ALIGN.TOP_MID, 0, 85)
+
+        self.start_dropdown = lv.dropdown(self.tile4)
+        self.start_dropdown.set_options("\n".join(self.stops))
+        self.start_dropdown.set_size(300, 50)
+        self.start_dropdown.align(lv.ALIGN.TOP_MID, 0, 115)
+        self.start_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
+
+        self.start_dropdown.add_event_cb(
+            self.on_journey_start_changed, lv.EVENT.VALUE_CHANGED, None
+        )
+
+        #Final destination
+        self.destination_label = lv.label(self.tile4)
+        self.destination_label.set_text("Final destination:")
+        self.destination_label.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.destination_label.align(lv.ALIGN.TOP_MID, 0, 200)
+
+        self.destination_dropdown = lv.dropdown(self.tile4)
+        self.destination_dropdown.set_options("\n".join(self.stops))
+        self.destination_dropdown.set_selected(2)
+        self.destination_dropdown.set_size(300, 50)
+        self.destination_dropdown.align(lv.ALIGN.TOP_MID, 0, 230)
+        self.destination_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
+
+        self.destination_dropdown.add_event_cb(
+            self.on_journey_destination_changed, lv.EVENT.VALUE_CHANGED, None
+        )
+
     def set_status(self, text):
         #Function: Shows a message below the departure table
         self.status_label.set_text(text)
@@ -411,6 +463,22 @@ class Application:
             self.show_departures()
 
         log("Settings reset to saved defaults")
+
+    # ========================== Journey ==============================
+
+    def on_journey_start_changed(self, _event):
+        #Function: Updates the selected starting stop
+        selected = self.start_dropdown.get_selected()
+        self.journey_start = self.stops[selected]
+        log("Journey start:" + self.journey_start)
+
+    def on_journey_destination_changed(self, _event):
+        #Function; Updated the selected destination stop
+        selected = self.destination_dropdown.get_selected()
+        self.journey_destination = self.stops[selected]
+        log("Journey destination:" + self.journey_destination)
+
+        
 
     # ======================= Wi-Fi ========================
 
