@@ -6,11 +6,12 @@ import lvgl as lv
 import network
 
 import trafiklab
+import resrobot
 
 from board_lvgl import start_board
 from debug_log import log
 
-from secrets import WIFI_SSID, WIFI_PASSWORD, TRAFIKLAB_API_KEY
+from secrets import (WIFI_SSID, WIFI_PASSWORD, TRAFIKLAB_API_KEY, RESROBOT_API_KEY)
 
 REFRESH_MS = 60_000   # US4.1: update every 60 seconds
 MAX_ROWS = 8          # number of departures shown in the table
@@ -24,7 +25,7 @@ GREY = 0x555555
 
 # US3.2B: Stop name in dropdown -> Trafiklab area ID.
 # Find the actual IDs using:
-# https://realtime-api.trafiklab.se/v1/stops/name/<name>?key=b35cb13d3f3b441ba134f27c542edf1e
+# https://realtime-api.trafiklab.se/v1/stops/name/<name>?key=api
 STOP_IDS = {
     "Karlskrona C": "740000230",
     "Bergasa": "740001537",
@@ -45,6 +46,9 @@ DEFAULT_STOP = "Karlskrona C"
 DEFAULT_TRANSPORT = "All"
 DEFAULT_JOURNEY_START = "Karlskrona C"
 DEFAULT_JOURNEY_DESTINATION = "Lyckeby"
+# US5.3B: Arrival time choices. "Now" = leave now (US5.3)
+ARRIVE_HOURS = ["Now"] + ["%02d" % hour for hour in range(24)]
+ARRIVE_MINUTES = ["%02d" % minute for minute in range(0, 60, 5)]
 
 _ASCII = {"å": "a", "ä": "a", "ö": "o", "Å": "A", "Ä": "A", "Ö": "O"
           ,"ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE", "é": "e", "è": "e", "ü": "u"
@@ -71,6 +75,8 @@ class Application:
         self.selected_transport = DEFAULT_TRANSPORT
         self.journey_start = DEFAULT_JOURNEY_START
         self.journey_destination = DEFAULT_JOURNEY_DESTINATION
+        self.arrive_hour = "Now"
+        self.arrive_minute = "00"
 
         # Latest download from Trafiklab (unfiltered)
         self.all_departures = []
@@ -278,57 +284,114 @@ class Application:
         self.reset_button.add_event_cb(
             self.reset_settings, lv.EVENT.CLICKED, None)
 
+        # Status bar for errors ("No Wi-Fi", "HTTP 401", ...)
+        self.settings_status = lv.label(self.tile3)
+        self.settings_status.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.settings_status.set_text("")
+        self.settings_status.align(lv.ALIGN.BOTTOM_MID, 0, -28)
+
     def create_journey_screen(self):
-        #Function: Creates journey selection screen
-        
-        #White backround
+        # Function: Journey planner with search and results on one screen
+        # (US5.1, US5.2, US5.3, US5.3B)
         self.tile4.set_style_bg_opa(lv.OPA.COVER, 0)
         self.tile4.set_style_bg_color(lv.color_hex(WHITE), 0)
 
-        #Title
+        # ---- Title ----
         self.tile4_title = lv.label(self.tile4)
         self.tile4_title.set_text("Journey Planner")
-        self.tile4_title.set_style_text_font(lv.font_montserrat_28, 0)
         self.tile4_title.set_style_text_color(lv.color_hex(BLACK), 0)
-        self.tile4_title.align(lv.ALIGN.TOP_MID, 0, 20)
+        self.tile4_title.align(lv.ALIGN.TOP_MID, 0, 6)
 
-        #Starting stop
-        self.start_label = lv.label(self.tile4)
-        self.start_label.set_text("Starting stop:")
-        self.start_label.set_style_text_color(lv.color_hex(BLACK), 0)
-        self.start_label.align(lv.ALIGN.TOP_MID, 0, 85)
-
+        # ---- Row 1: From -> To ----
         self.start_dropdown = lv.dropdown(self.tile4)
         self.start_dropdown.set_options("\n".join(self.stops))
-        self.start_dropdown.set_size(300, 50)
-        self.start_dropdown.align(lv.ALIGN.TOP_MID, 0, 115)
-        self.start_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
-
+        self.start_dropdown.set_selected(
+            self.stops.index(self.journey_start))
+        self.start_dropdown.set_size(250, 40)
+        self.start_dropdown.align(lv.ALIGN.TOP_LEFT, 10, 30)
         self.start_dropdown.add_event_cb(
-            self.on_journey_start_changed, lv.EVENT.VALUE_CHANGED, None
-        )
+            self.on_journey_start_changed, lv.EVENT.VALUE_CHANGED, None)
 
-        #Final destination
-        self.destination_label = lv.label(self.tile4)
-        self.destination_label.set_text("Final destination:")
-        self.destination_label.set_style_text_color(lv.color_hex(BLACK), 0)
-        self.destination_label.align(lv.ALIGN.TOP_MID, 0, 200)
+        self.arrow_label = lv.label(self.tile4)
+        self.arrow_label.set_text("->")
+        self.arrow_label.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.arrow_label.align(lv.ALIGN.TOP_LEFT, 285, 42)
 
         self.destination_dropdown = lv.dropdown(self.tile4)
         self.destination_dropdown.set_options("\n".join(self.stops))
-        self.destination_dropdown.set_selected(2)
-        self.destination_dropdown.set_size(300, 50)
-        self.destination_dropdown.align(lv.ALIGN.TOP_MID, 0, 230)
-        self.destination_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
-
+        self.destination_dropdown.set_selected(
+            self.stops.index(self.journey_destination))
+        self.destination_dropdown.set_size(250, 40)
+        self.destination_dropdown.align(lv.ALIGN.TOP_LEFT, 330, 30)
         self.destination_dropdown.add_event_cb(
-            self.on_journey_destination_changed, lv.EVENT.VALUE_CHANGED, None
-        )
+            self.on_journey_destination_changed, lv.EVENT.VALUE_CHANGED, None)
+
+        # ---- Row 2: Arrive by + Search ----
+        self.arrive_label = lv.label(self.tile4)
+        self.arrive_label.set_text("Arrive by:")
+        self.arrive_label.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.arrive_label.align(lv.ALIGN.TOP_LEFT, 10, 92)
+
+        self.hour_dropdown = lv.dropdown(self.tile4)
+        self.hour_dropdown.set_options("\n".join(ARRIVE_HOURS))
+        self.hour_dropdown.set_size(90, 40)
+        self.hour_dropdown.align(lv.ALIGN.TOP_LEFT, 95, 80)
+        self.hour_dropdown.add_event_cb(
+            self.on_arrive_hour_changed, lv.EVENT.VALUE_CHANGED, None)
+
+        self.minute_dropdown = lv.dropdown(self.tile4)
+        self.minute_dropdown.set_options("\n".join(ARRIVE_MINUTES))
+        self.minute_dropdown.set_size(90, 40)
+        self.minute_dropdown.align(lv.ALIGN.TOP_LEFT, 195, 80)
+        self.minute_dropdown.add_event_cb(
+            self.on_arrive_minute_changed, lv.EVENT.VALUE_CHANGED, None)
+
+        self.search_button = lv.button(self.tile4)
+        self.search_button.set_size(150, 40)
+        self.search_button.align(lv.ALIGN.TOP_LEFT, 430, 80)
+        self.search_label = lv.label(self.search_button)
+        self.search_label.set_text("Search")
+        self.search_label.center()
+        self.search_button.add_event_cb(
+            self.on_search_clicked, lv.EVENT.CLICKED, None)
+        
+        self.journey_header = lv.label(self.tile4)
+        self.journey_header.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.journey_header.set_text("Choose stops and press Search")
+        self.journey_header.align(lv.ALIGN.TOP_MID, 0, 130)
+
+        # ---- Result table, scrolls when the journeys don't fit ----
+        self.journey_table = lv.table(self.tile4)
+        self.journey_table.set_style_bg_color(
+            lv.color_hex(WHITE), lv.PART.ITEMS)
+        self.journey_table.set_style_text_color(
+            lv.color_hex(BLACK), lv.PART.ITEMS)
+        self.journey_table.set_column_count(4)
+        self.journey_table.set_row_count(1)
+        self.journey_table.set_cell_value(0, 0, "Depart")
+        self.journey_table.set_cell_value(0, 1, "Arrive")
+        self.journey_table.set_cell_value(0, 2, "Time")
+        self.journey_table.set_cell_value(0, 3, "Changes")
+        self.journey_table.set_column_width(0, 100)
+        self.journey_table.set_column_width(1, 75)
+        self.journey_table.set_column_width(2, 80)
+        self.journey_table.set_column_width(3, 305)
+        self.journey_table.set_size(580, 245)
+        self.journey_table.align(lv.ALIGN.TOP_MID, 0, 150)
+
+        # Status bar for errors ("No Wi-Fi", "HTTP 401", ...)
+        self.journey_status = lv.label(self.tile4)
+        self.journey_status.set_style_text_color(lv.color_hex(BLACK), 0)
+        self.journey_status.set_text("")
+        self.journey_status.align(lv.ALIGN.BOTTOM_MID, 0, -28)
 
     def set_status(self, text):
-        #Function: Shows a message below the departure table
-        self.status_label.set_text(text)
-        self.status_label.align(lv.ALIGN.BOTTOM_MID, 0, -28)
+        # Function: Shows a status message on Departures, Settings and
+        # Journey Planner
+        for label in (self.status_label, self.settings_status,
+                      self.journey_status):
+            label.set_text(text)
+            label.align(lv.ALIGN.BOTTOM_MID, 0, -28)
 
     # =================== Trafiklab ======================
 
@@ -478,7 +541,87 @@ class Application:
         self.journey_destination = self.stops[selected]
         log("Journey destination:" + self.journey_destination)
 
-        
+    def on_search_clicked(self, _event):
+        # Function: Shows the top matching journey based on arrival time
+        # (US5.3B).
+        # Now           -> the journey that arrives first.
+        # Arrive by HH:MM -> the latest journey that still arrives in time.
+        arrive_by = None
+        if self.arrive_hour != "Now":
+            arrive_by = "%s:%s" % (self.arrive_hour, self.arrive_minute)
+
+        route = "%s -> %s" % (self.journey_start, self.journey_destination)
+        if arrive_by:
+            route = "Arrive by %s: %s" % (arrive_by, route)
+        else:
+            route = "Arrive first: %s" % route
+        self.journey_header.set_text(ascii_text(route))
+        self.journey_header.align(lv.ALIGN.TOP_MID, 0, 130)
+
+        if self.journey_start == self.journey_destination:
+            self.show_journey_message("Choose two different stops")
+            return
+        if not (network.WLAN(network.STA_IF).isconnected()
+                or self.connect_wifi()):
+            self.show_journey_message("No Wi-Fi")
+            return
+
+        try:
+            trips = resrobot.fetch_trips(
+                STOP_IDS[self.journey_start],
+                STOP_IDS[self.journey_destination],
+                RESROBOT_API_KEY, arrive_by=arrive_by)
+        except Exception as error:
+            log("journey search failed: %r" % (error,))
+            self.show_journey_message("Could not search: %s" % (error,))
+            return
+
+        # Pick the single top matching journey
+        if arrive_by:
+            best = resrobot.best_by_arrival(trips, arrive_by)
+        else:
+            best = resrobot.earliest_arrival(trips)
+
+        if best is None:
+            self.show_journey_message("No journey arrives in time")
+            return
+
+        self.show_journeys([best])
+        log("top journey: %s -> %s, %d change(s)" % (
+            best["dep"], best["arr"], best["changes"]))
+
+    def show_journeys(self, trips):
+        # Function: Fills the journey table, one row per journey
+        if not trips:
+            self.show_journey_message("No journeys found")
+            return
+        self.journey_table.set_row_count(len(trips) + 1)
+        for row, trip in enumerate(trips, start=1):
+            self.journey_table.set_cell_value(row, 0, trip["dep"])
+            self.journey_table.set_cell_value(row, 1, trip["arr"])
+            self.journey_table.set_cell_value(
+                row, 2, "%d min" % trip["minutes"])
+            self.journey_table.set_cell_value(
+                row, 3, ascii_text(resrobot.format_changes(trip)))
+        self.journey_table.scroll_to_y(0, False)
+
+    def show_journey_message(self, text):
+        # Function: Shows a single message row in the journey table
+        self.journey_table.set_row_count(2)
+        for col in range(3):
+            self.journey_table.set_cell_value(1, col, "-")
+        self.journey_table.set_cell_value(1, 3, text)
+
+    def on_arrive_hour_changed(self, _event):
+        # Function: New arrival hour selected (US5.3B)
+        self.arrive_hour = ARRIVE_HOURS[self.hour_dropdown.get_selected()]
+        log("Arrive hour: " + self.arrive_hour)
+
+    def on_arrive_minute_changed(self, _event):
+        # Function: New arrival minute selected (US5.3B)
+        self.arrive_minute = ARRIVE_MINUTES[
+            self.minute_dropdown.get_selected()]
+        log("Arrive minute: " + self.arrive_minute)
 
     # ======================= Wi-Fi ========================
 
