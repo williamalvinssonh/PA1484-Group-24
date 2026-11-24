@@ -12,7 +12,7 @@ from debug_log import log
 
 from secrets import WIFI_SSID, WIFI_PASSWORD, TRAFIKLAB_API_KEY
 
-REFRESH_MS = 60_000   # US4.1: update every 60 seconds
+REFRESH_MS = 120_000   # US4.1: update every 60 seconds
 MAX_ROWS = 8          # number of departures shown in the table
 
 # NF3: Attribution in accordance with Trafiklab's license (CC BY 4.0)
@@ -232,15 +232,16 @@ class Application:
         self.stop_label.set_style_text_color(lv.color_hex(BLACK), 0)
         self.stop_label.align(lv.ALIGN.TOP_MID, 0, 75)
 
-        self.stop_dropdown = lv.dropdown(self.tile3)
-        self.stop_dropdown.set_options("\n".join(self.stops))
-        self.stop_dropdown.set_selected(
-            self.stops.index(self.selected_stop))
-        self.stop_dropdown.set_size(300, 50)
-        self.stop_dropdown.align(lv.ALIGN.TOP_MID, 0, 105)
-        self.stop_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
-        self.stop_dropdown.add_event_cb(
-            self.on_stop_changed, lv.EVENT.VALUE_CHANGED, None)
+        
+        # Searchable departure stop selector (US3.2C)
+        self.stop_button, self.stop_value_label = (
+            self.create_stop_selector(
+                self.tile3,
+                self.selected_stop,
+                "departure",
+                105
+            )
+        )
 
         # ---- Transport selection (US3.3) ----
         self.transport_label = lv.label(self.tile3)
@@ -298,32 +299,197 @@ class Application:
         self.start_label.set_style_text_color(lv.color_hex(BLACK), 0)
         self.start_label.align(lv.ALIGN.TOP_MID, 0, 85)
 
-        self.start_dropdown = lv.dropdown(self.tile4)
-        self.start_dropdown.set_options("\n".join(self.stops))
-        self.start_dropdown.set_size(300, 50)
-        self.start_dropdown.align(lv.ALIGN.TOP_MID, 0, 115)
-        self.start_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
-
-        self.start_dropdown.add_event_cb(
-            self.on_journey_start_changed, lv.EVENT.VALUE_CHANGED, None
+        # Searchable starting stop (US5.2B)
+        self.start_button, self.start_value_label = (
+            self.create_stop_selector(
+                self.tile4,
+                self.journey_start,
+                "start",
+                115
+            )
         )
 
         #Final destination
         self.destination_label = lv.label(self.tile4)
         self.destination_label.set_text("Final destination:")
         self.destination_label.set_style_text_color(lv.color_hex(BLACK), 0)
-        self.destination_label.align(lv.ALIGN.TOP_MID, 0, 200)
+        self.destination_label.align(lv.ALIGN.TOP_MID, 0, 200)     
 
-        self.destination_dropdown = lv.dropdown(self.tile4)
-        self.destination_dropdown.set_options("\n".join(self.stops))
-        self.destination_dropdown.set_selected(2)
-        self.destination_dropdown.set_size(300, 50)
-        self.destination_dropdown.align(lv.ALIGN.TOP_MID, 0, 230)
-        self.destination_dropdown.set_style_text_font(lv.font_montserrat_28, 0)
-
-        self.destination_dropdown.add_event_cb(
-            self.on_journey_destination_changed, lv.EVENT.VALUE_CHANGED, None
+        # Searchable final destination (US5.2B)
+        self.destination_button, self.destination_value_label = (
+            self.create_stop_selector(
+                self.tile4,
+                self.journey_destination,
+                "destination",
+                230
+            )
         )
+
+    # ========= Searcheble dropdownlist =========
+
+    def create_stop_selector(self, parent, stop, target, y):
+        # Creates a button that opens the searchable stop list.
+        button = lv.button(parent)
+        button.set_style_bg_color(lv.color_hex(BLACK), 0)
+        button.set_size(300, 50)
+        button.align(lv.ALIGN.TOP_MID, 0, y)
+
+        label = lv.label(button)
+        label.set_style_text_color(lv.color_hex(WHITE), 0)
+        label.set_text(ascii_text(stop))
+        label.center()
+
+        button.add_event_cb(
+            lambda event: self.open_stop_search(target),
+            lv.EVENT.CLICKED,
+            None
+        )
+
+        return button, label
+
+    def open_stop_search(self, target):
+        # Remember which stop selector is being edited.
+        self.search_target = target
+
+        # Overlay prevents interaction with the screens behind.
+        self.search_overlay = lv.obj(lv.screen_active())
+        self.search_overlay.set_size(600, 450)
+        self.search_overlay.set_pos(0, 0)
+        self.search_overlay.set_style_bg_color(
+            lv.color_hex(WHITE), 0)
+        self.search_overlay.set_style_border_width(0, 0)
+        self.search_overlay.remove_flag(lv.obj.FLAG.SCROLLABLE)
+
+        title = lv.label(self.search_overlay)
+        title.set_text("Select stop")
+        title.set_style_text_color(lv.color_hex(BLACK), 0)
+        title.align(lv.ALIGN.TOP_MID, 0, 5)
+
+        # Close button
+        close_button = lv.button(self.search_overlay)
+        close_button.set_size(90, 35)
+        close_button.align(lv.ALIGN.TOP_RIGHT, -5, 0)
+
+        close_label = lv.label(close_button)
+        close_label.set_text("Cancel")
+        close_label.center()
+
+        close_button.add_event_cb(
+            self.close_stop_search,
+            lv.EVENT.CLICKED,
+            None
+        )
+
+        # Search field
+        self.search_input = lv.textarea(self.search_overlay)
+        self.search_input.set_one_line(True)
+        self.search_input.set_placeholder_text("Search stop...")
+        self.search_input.set_size(530, 45)
+        self.search_input.align(lv.ALIGN.TOP_MID, 0, 50)
+
+        # Scrollable result list
+        self.search_results = lv.list(self.search_overlay)
+        self.search_results.set_size(530, 275)
+        self.search_results.align(lv.ALIGN.TOP_MID, 0, 105)
+
+        # Keyboard, initially hidden
+        self.search_keyboard = lv.keyboard(self.search_overlay)
+        self.search_keyboard.set_size(530, 175)
+        self.search_keyboard.align(lv.ALIGN.BOTTOM_MID, 0, -5)
+        self.search_keyboard.set_textarea(self.search_input)
+        self.search_keyboard.add_flag(lv.obj.FLAG.HIDDEN)
+
+        # Show keyboard when input is focused
+        self.search_input.add_event_cb(
+            self.on_search_focused,
+            lv.EVENT.FOCUSED,
+            None
+        )
+
+        # Filter whenever text changes
+        self.search_input.add_event_cb(
+            self.on_search_changed,
+            lv.EVENT.VALUE_CHANGED,
+            None
+        )
+
+        # Initially display all stops
+        self.update_search_results("")
+
+    def on_search_focused(self, event):
+        # Make room for the keyboard.
+        self.search_keyboard.remove_flag(lv.obj.FLAG.HIDDEN)
+        self.search_results.set_height(105)
+
+    def on_search_changed(self, event):
+        query = self.search_input.get_text()
+        self.update_search_results(query)
+
+    def update_search_results(self, query):
+        # Normalize Swedish characters and ignore case.
+        query = ascii_text(query).lower().strip()
+
+        # Remove old results.
+        self.search_results.clean()
+
+        matches = 0
+
+        for stop in self.stops:
+            searchable_name = ascii_text(stop).lower()
+
+            if query in searchable_name:
+                matches += 1
+
+                button = self.search_results.add_button(
+                    None, ascii_text(stop)
+                )
+                button.set_style_bg_color(lv.color_hex(BLACK), 0)
+                button.set_style_text_color(lv.color_hex(WHITE), 0)
+
+                button.add_event_cb(
+                    lambda event, name=stop:
+                        self.select_searched_stop(name),
+                    lv.EVENT.CLICKED,
+                    None
+                )
+
+        if matches == 0:
+            self.search_results.add_text(
+                "No matching stops"
+            )
+
+    def select_searched_stop(self, stop):
+        # Update the selected stop and its visible label.
+        if self.search_target == "departure":
+            self.selected_stop = stop
+            self.stop_value_label.set_text(ascii_text(stop))
+            self.stop_value_label.center()
+
+        elif self.search_target == "start":
+            self.journey_start = stop
+            self.start_value_label.set_text(ascii_text(stop))
+            self.start_value_label.center()
+
+        elif self.search_target == "destination":
+            self.journey_destination = stop
+            self.destination_value_label.set_text(
+                ascii_text(stop))
+            self.destination_value_label.center()
+
+        log("Selected stop: " + stop)
+
+        # Close before refreshing departures.
+        target = self.search_target
+        self.close_stop_search(None)
+
+        if target == "departure":
+            self.update_data()
+
+    def close_stop_search(self, event):
+        # Delete the entire search interface.
+        self.search_overlay.delete()
+        self.search_overlay = None
+
 
     def set_status(self, text):
         #Function: Shows a message below the departure table
@@ -383,7 +549,12 @@ class Application:
 
     def on_refresh_timer(self, _timer):
         #Function: Runs every 60 seconds (US4.1)
-        self.update_data()
+        log("60-second timer triggered")
+        try:
+            self.update_data()
+        except OSError as error:
+            log("Wi-Fi refresh failed: %r" % (error,))
+            self.set_status("Wi-Fi connection error")
 
     def on_refresh_clicked(self, _event):
         #Function: Manual refresh (US4.2)
@@ -392,14 +563,7 @@ class Application:
         # Restart the 60 s countdown so no extra fetch happens right after
         self.refresh_timer.reset()   
 
-    # ========================== Settings ==============================
-
-    def on_stop_changed(self, _event):
-        #Function: New stop selected, fetch new departures (US3.2B)
-        selected = self.stop_dropdown.get_selected()
-        self.selected_stop = self.stops[selected]
-        log("Selected stop: " + self.selected_stop)
-        self.refresh_departures()
+    # ========================== Settings ==============================  
 
     def on_transport_changed(self, _event):
         #Function: New transport type selected, filter the table (US3.3)
@@ -451,8 +615,9 @@ class Application:
         self.load_settings()
 
         # Update dropdowns
-        self.stop_dropdown.set_selected(
-            self.stops.index(self.selected_stop))
+        self.stop_value_label.set_text(
+            ascii_text(self.selected_stop))
+        self.stop_value_label.center()
         self.transport_dropdown.set_selected(
             self.transports.index(self.selected_transport))
 
@@ -463,23 +628,7 @@ class Application:
             self.show_departures()
 
         log("Settings reset to saved defaults")
-
-    # ========================== Journey ==============================
-
-    def on_journey_start_changed(self, _event):
-        #Function: Updates the selected starting stop
-        selected = self.start_dropdown.get_selected()
-        self.journey_start = self.stops[selected]
-        log("Journey start:" + self.journey_start)
-
-    def on_journey_destination_changed(self, _event):
-        #Function; Updated the selected destination stop
-        selected = self.destination_dropdown.get_selected()
-        self.journey_destination = self.stops[selected]
-        log("Journey destination:" + self.journey_destination)
-
-        
-
+       
     # ======================= Wi-Fi ========================
 
     @staticmethod

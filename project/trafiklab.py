@@ -1,5 +1,4 @@
 import gc
-
 import requests
 
 BASE_URL = "https://realtime-api.trafiklab.se/v1"
